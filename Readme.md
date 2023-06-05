@@ -1,5 +1,6 @@
 PC Info Readme
 See also: Setup Windows System Readme.docx
+![image](https://github.com/ITAutomator/PCInfo/assets/135157036/ba5943a6-8520-4300-b1fd-6ef768f10b56)
 
  
 
