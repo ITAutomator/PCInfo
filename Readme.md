@@ -10,12 +10,15 @@ Shows all kinds of useful information about the PC and User
 
 To Run
 Press Windows-R (Run) and paste
+
 powershell -executionpolicy bypass Invoke-Expression (Invoke-WebRequest https://raw.githubusercontent.com/ITAutomator/pcinfo/main/PC%20Info.ps1).Content
 
 Open Powershell and paste
+
 Invoke-Expression ((Invoke-WebRequest https://raw.githubusercontent.com/ITAutomator/pcinfo/main/PC%20Info.ps1).Content)
 
-Download Ps1 and run 
+Download Ps1 and run
+
 Download from here: PC Info.ps1
 
 Information Returned
