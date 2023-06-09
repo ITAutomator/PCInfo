@@ -9,13 +9,11 @@ Run as user (not as admin)<br>
 Shows all kinds of useful information about the PC and User
 
 To Run<br>
-Press Windows-R (Run) and paste
+Press _Windows-R_ (Run) and paste: <br>
+__powershell -executionpolicy bypass Invoke-Expression (Invoke-WebRequest https://raw.githubusercontent.com/ITAutomator/pcinfo/main/PC%20Info.ps1).Content__
 
-powershell -executionpolicy bypass Invoke-Expression (Invoke-WebRequest https://raw.githubusercontent.com/ITAutomator/pcinfo/main/PC%20Info.ps1).Content
-
-Open Powershell and paste
-
-Invoke-Expression ((Invoke-WebRequest https://raw.githubusercontent.com/ITAutomator/pcinfo/main/PC%20Info.ps1).Content)
+Open Powershell and paste<br>
+__Invoke-Expression ((Invoke-WebRequest https://raw.githubusercontent.com/ITAutomator/pcinfo/main/PC%20Info.ps1).Content)__
 
 Download Ps1 and run
 
