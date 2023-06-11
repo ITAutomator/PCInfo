@@ -30,9 +30,9 @@ Turn this off to go back to a slower but safer shutdown.  The speed benefit is n
 #### To turn off fast startup (hiberbootenabled) manually <br>
 Note: This is a system setting and will require admin access to change. <br>
 
-> Press Win+R > Type "control" > Type "power buttons" > Turn on fast
-> startup [Untick this box]
+> Press Win+R > Type "control" (Opens control panel) > Type "power buttons" (Click Change what the power buttons do) > look for *Turn on faststartup* > Untick this box
 
+![image](https://github.com/ITAutomator/PCInfo/assets/135157036/4c81e4c5-65ec-4fed-9c01-7e7fdbcb18e5)
 
 
 ### Notifications
