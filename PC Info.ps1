@@ -19,6 +19,12 @@ Function IsAdmin()
     $IsAdmin=$prp.IsInRole($adm)
     $IsAdmin
 }
+Function IsLocalAdmin
+{ ## if the user is in the local admins group
+  $null -ne (whoami /groups /fo csv |
+  ConvertFrom-Csv |
+  Where-Object { $_.SID -eq "S-1-5-32-544" })
+}
 Function LocalAdmins
 {
     ## Show Local admins
@@ -64,7 +70,7 @@ Function RegGet ($keymain, $keypath, $keyname)
 ## $ver=RegGet "HKCR" "Word.Application\CurVer"
 ## $ver=RegGet "HKLM" "System\CurrentControlSet\Control\Terminal Server" "fDenyTSConnections"
 #########
-    {
+{
     $result = ""
     Switch ($keymain)
         {
@@ -77,7 +83,7 @@ Function RegGet ($keymain, $keypath, $keyname)
         $result=$RegGetregKey.GetValue($keyname, $null, "DoNotExpandEnvironmentNames")
         }
     $result
-    }
+}
 
 ### Main function header - Put RethinkitFunctions.psm1 in same folder as script
 $scriptFullname = $PSCommandPath ; if (!($scriptFullname)) {$scriptFullname =$MyInvocation.InvocationName}
@@ -91,60 +97,76 @@ $scriptVer      = "v"+(Get-Item $scriptFullname).LastWriteTime.ToString("yyyy-MM
 
 Write-Host "PC Info.ps1" -NoNewline -ForegroundColor Yellow
 Write-Host " (Gathering info)..."
-#################################################
-$userisadmin = if (IsAdmin) {"YES"} else {"NO"}
-$dsregcmd = dsregcmd /status | Where-Object { $_ -match ' : ' } | ForEach-Object { $_.Trim() } | ConvertFrom-String -PropertyNames 'Name','Value' -Delimiter ' : '
-###
+
 ## Read Teamviewer ID from registry
-$tvid =RegGet "HKLM" "SOFTWARE\WOW6432Node\TeamViewer" "ClientID"
-If ($tvid -eq "")
-{
-    $tvid =RegGet "HKLM" "SOFTWARE\TeamViewer" "ClientID"
-}
-$tvaccnt =RegGet "HKLM" "SOFTWARE\WOW6432Node\TeamViewer" "OwningManagerAccountName"
-If ($tvaccnt -eq "")
-{
-    $tvaccnt =RegGet "HKLM" "SOFTWARE\TeamViewer" "OwningManagerAccountName"
-}
-###
-$NetConnectionProfile= Get-NetConnectionProfile
-$NetIPAddress        = Get-NetIPAddress -InterfaceIndex $NetConnectionProfile.InterfaceIndex -AddressFamily IPV4
-$NetAdapter          = Get-NetAdapter -InterfaceIndex $NetConnectionProfile.InterfaceIndex
-$macaddress= $NetAdapter.MacAddress
-$ipaddress = $NetIPAddress.IPAddress
-$network   = "$($NetConnectionProfile.InterfaceAlias) $($NetConnectionProfile.Name) ($($NetConnectionProfile.NetworkCategory))"
-###
-$disks= @(Get-disk)
-$disk = $disks[0]
-$computerInfo = Get-ComputerInfo
-###
+$tvid = RegGet "HKLM" "SOFTWARE\WOW6432Node\TeamViewer" "ClientID"
+If ($tvid -eq "") {$tvid = RegGet "HKLM" "SOFTWARE\TeamViewer" "ClientID"}
+$tvaccnt = RegGet "HKLM" "SOFTWARE\WOW6432Node\TeamViewer" "OwningManagerAccountName"
+If ($tvaccnt -eq "") {$tvaccnt = RegGet "HKLM" "SOFTWARE\TeamViewer" "OwningManagerAccountName"}
+$TeamviewerID = $tvid
+if (($tvaccnt -ne $null) -and ($tvaccnt -ne "")) {$TeamviewerID +="($($tvaccnt))"}
 
-################ Public IP: START
-### Look for public ip 
-$PublicIP = Invoke-RestMethod http://ipinfo.io/json | Select -exp ip
-################ Public IP: END
+# Networks
+$networks=@()
+$NetConnectionProfiles = Get-NetConnectionProfile
+ForEach ($NetConnectionProfile in $NetConnectionProfiles)
+{
+    $NetIPAddress        = Get-NetIPAddress -InterfaceIndex $NetConnectionProfile.InterfaceIndex -AddressFamily IPV4
+    $NetAdapter          = Get-NetAdapter   -InterfaceIndex $NetConnectionProfile.InterfaceIndex
+    #
+    $network =    $NetIPAddress.IPAddress
+    $network += " $($NetConnectionProfile.InterfaceAlias) $($NetConnectionProfile.Name) ($($NetConnectionProfile.NetworkCategory))"
+    $network += " [$($NetAdapter.MacAddress)]"
+    #
+    $networks += $network
+}
 
-####### Windows settings
+# Disks
+$disks=@()
+$Getdisks = Get-disk
+ForEach ($Getdisk in $Getdisks)
+{
+    $disk = $Getdisk.FriendlyName
+    $disk += " " + ($Getdisk.Size / 1GB).ToString("#.# GB")+""
+    #
+    $volumes = $Getdisk | Get-Partition | Get-Volume | Where-Object DriveLetter -ne $null
+    ForEach ($volume in $volumes)
+    {
+        $disk += " [" + $volume.DriveLetter.ToString().ToUpper() + ": "
+        $disk += ($volume.SizeRemaining / 1GB).ToString("#.# GB")+" free of "
+        $disk += ($volume.Size / 1GB).ToString("#.# GB")+"]"
+    }
+    $disks += $disk
+}
+
+# Public IP
+$PublicIP_Info = Invoke-RestMethod http://ipinfo.io/json -UseBasicParsing
+
+# Windows settings
 [string]$reg_hiberbootenabled = RegGet "HKLM" "SYSTEM\CurrentControlSet\Control\Session Manager\Power" "HiberbootEnabled"
 [string]$reg_toastenabled     = RegGet "HKCU" "SOFTWARE\Microsoft\Windows\CurrentVersion\PushNotifications" "ToastEnabled"
 if ($reg_hiberbootenabled -eq "") {$reg_hiberbootenabled = "(blank)"}
 if ($reg_toastenabled -eq "")     {$reg_toastenabled     = "(blank)"}
 ##
-if ($reg_hiberbootenabled -eq "1") {$reg_hiberbootenabled_desc="Fast Boot is enabled"} else {$reg_hiberbootenabled_desc="Fast Boot is disabled (shutdown same as restart)"}
-if ($reg_toastenabled -eq "0") {$reg_toastenabled_desc="System notifications are disabled for current user"} else {$reg_toastenabled_desc="System notifications are enabled for current user"} 
-####### Windows settings
+if ($reg_hiberbootenabled -eq "1") {$reg_hiberbootenabled_desc="Warning: Fast Boot is enabled"} else {$reg_hiberbootenabled_desc="OK: Fast Boot is disabled (shutdown same as restart)"}
+if ($reg_toastenabled -eq "0") {$reg_toastenabled_desc="Warning: System notifications are disabled for current user"} else {$reg_toastenabled_desc="OK: System notifications are enabled for current user"} 
 
+# PC boot
 $pc = Get-WmiObject win32_operatingsystem | select csname, @{LABEL="LastBootUpTime";EXPRESSION={$_.ConverttoDateTime($_.lastbootuptime)}}
 $days_fromstartup = ((Get-Date)-($pc.LastBootUpTime)).TotalDays
-###
 
-####
+# Local Admins
 $localuser = "$($env:userdomain)\$($env:username)" 
-$localadmins=LocalAdmins
-if ($localadmins -contains "$localuser" ) 
-    {$IsLocalAdmin ="Yes"}
-else 
-    {$IsLocalAdmin ="No"} 
+$localadmins = LocalAdmins
+$IsLocalAdmin = if (IsLocalAdmin) {"YES"} else {"NO"}
+$IsAdmin      = if (IsAdmin)      {"YES"} else {"NO"}
+
+# Azure Info
+$dsregcmd = dsregcmd /status | Where-Object { $_ -match ' : ' } | ForEach-Object { $_.Trim() } | ConvertFrom-String -PropertyNames 'Name','Value' -Delimiter ' : '
+
+# PC Info
+$computerInfo = Get-ComputerInfo
+
 ####    
 $objProps = [ordered]@{
     ComputerSN    = $computerInfo.BiosSeralNumber
@@ -152,19 +174,17 @@ $objProps = [ordered]@{
     Model         = "$($computerInfo.CsManufacturer) $($computerInfo.CsModel)"
     CPU           = $computerinfo.CsProcessors[0].Name + " (" + $computerinfo.CsProcessors[0].NumberOfCores + "C)"
     Memory        = ($computerInfo.CsTotalPhysicalMemory / 1GB).ToString("#.# GB")
-    DiskName      = $disk.FriendlyName
-    DiskSize      = ($disk.Size / 1GB).ToString("#.# GB")
+    Disks         = $Disks -join ", "
     Computername  = $computerInfo.CsName
-    IPAddress     = $ipaddress
-    MACaddress    = $macaddress
-    Network       = $network
-    PublicIP      = $PublicIP
-    TeamviewerID  = "$tvid ($($tvaccnt))"
+    Networks      = $networks -join ", "
+    PublicIP      = $PublicIP_Info.ip
+    PublicIP_Loc  = "$($PublicIP_Info.city) $($PublicIP_Info.region) $($PublicIP_Info.postal) $($PublicIP_Info.country) [$($PublicIP_Info.org)]"
+    TeamviewerID  = $TeamviewerID
     Domain        = $env:userdomain 
     User          = $localuser
     LocalAdmins   = $localadmins -join ", "
     IsLocalAdmin  = $IsLocalAdmin
-    IsAdminNow    = $userisadmin
+    IsAdminNow    = $IsAdmin
     #AZADAccount   = ($dsregcmd | Where-Object -Property Name -eq "Executing Account Name").Value
     AZADJoined    = ($dsregcmd | Where-Object -Property Name -eq "AzureAdJoined").Value
     DeviceId      = ($dsregcmd | Where-Object -Property Name -eq "DeviceId").Value
@@ -175,17 +195,24 @@ $objProps = [ordered]@{
     LastBootUpTime= $pc.LastBootUpTime.tostring("g")
     LastBootDaysAgo= "$($days_fromstartup.tostring("0.#")) days ago"
     }
-
 $infoObject = New-Object -TypeName psobject -Property $objProps
-Write-Host "-----------------------------------------------------------------------------"
-Write-Host "$($scriptName) $($scriptVer)       Computer:$($env:computername) User:$($env:username) PSver:$($PSVersionTable.PSVersion.Major).$($PSVersionTable.PSVersion.Minor)"
-$infoObject
-Write-Host "-----------------------------------------------------------------------------"
+$out_info = ($infoObject | Out-String).Trim()
+$out_separator =  "-----------------------------------------------------------------------------"
+$out_header = "$($scriptName) $($scriptVer)       Computer:$($env:computername) User:$($env:username) PSver:$($PSVersionTable.PSVersion.Major).$($PSVersionTable.PSVersion.Minor)"
+$out_lines=@()
+$out_lines+=$out_separator
+$out_lines+=$out_header
+$out_lines+=$out_separator
+$out_lines+=$out_info
+$out_lines+=$out_separator
+$out_lines | Write-Host
 ### Drop a report in the downloads folder
 $folder_downloads = (New-Object -ComObject Shell.Application).NameSpace('shell:Downloads').Self.Path
 $date = get-date -format "yyyy-MM-dd_HH-mm-ss"
 $file = "$($folder_downloads)\PC Info $($date).txt"
-$infoObject | Out-File $file
+# write file
+$out_lines | Out-File $file
+# open file
 Invoke-Item $file
 #################################################
 Read-Host -Prompt "Press Enter to exit"
