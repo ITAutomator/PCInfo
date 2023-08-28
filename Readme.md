@@ -12,11 +12,11 @@ Run as user (not as admin)
 
 Method 1: Press _Windows-R_ (Run) and paste:
 
-    powershell -executionpolicy bypass Invoke-Expression (Invoke-WebRequest https://raw.githubusercontent.com/ITAutomator/pcinfo/main/PC%20Info.ps1).Content
+    powershell -executionpolicy bypass Invoke-Expression (Invoke-WebRequest https://raw.githubusercontent.com/ITAutomator/pcinfo/main/PC%20Info.ps1 -UseBasicParsing).Content
 
 Method 2: Open Powershell and paste
 
-    Invoke-Expression ((Invoke-WebRequest https://raw.githubusercontent.com/ITAutomator/pcinfo/main/PC%20Info.ps1).Content)
+    Invoke-Expression ((Invoke-WebRequest https://raw.githubusercontent.com/ITAutomator/pcinfo/main/PC%20Info.ps1 -UseBasicParsing).Content)
 
 Method 3: Download the Ps1 and run
 Download from here: [PC Info.ps1](https://raw.githubusercontent.com/ITAutomator/PCInfo/main/PC%20Info.ps1)
