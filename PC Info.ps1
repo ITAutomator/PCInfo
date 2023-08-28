@@ -103,12 +103,12 @@ $tvid = RegGet "HKLM" "SOFTWARE\WOW6432Node\TeamViewer" "ClientID"
 If ($tvid -eq "") {$tvid = RegGet "HKLM" "SOFTWARE\TeamViewer" "ClientID"}
 $tvaccnt = RegGet "HKLM" "SOFTWARE\WOW6432Node\TeamViewer" "OwningManagerAccountName"
 If ($tvaccnt -eq "") {$tvaccnt = RegGet "HKLM" "SOFTWARE\TeamViewer" "OwningManagerAccountName"}
-$TeamviewerID = $tvid
-if (($tvaccnt -ne $null) -and ($tvaccnt -ne "")) {$TeamviewerID +="($($tvaccnt))"}
+$TeamviewerID = [string]$tvid
+if (($tvaccnt -ne $null) -and ($tvaccnt -ne "")) {$TeamviewerID +=" ($($tvaccnt))"}
 
 # Networks
 $networks=@()
-$NetConnectionProfiles = Get-NetConnectionProfile
+$NetConnectionProfiles = Get-NetConnectionProfile | Sort-Object InterfaceIndex
 ForEach ($NetConnectionProfile in $NetConnectionProfiles)
 {
     $NetIPAddress        = Get-NetIPAddress -InterfaceIndex $NetConnectionProfile.InterfaceIndex -AddressFamily IPV4
@@ -123,11 +123,11 @@ ForEach ($NetConnectionProfile in $NetConnectionProfiles)
 
 # Disks
 $disks=@()
-$Getdisks = Get-disk
+$Getdisks = Get-disk | Sort-Object Number
 ForEach ($Getdisk in $Getdisks)
 {
     $disk = $Getdisk.FriendlyName
-    $disk += " " + ($Getdisk.Size / 1GB).ToString("#.# GB")+""
+    $disk += " " + ($Getdisk.Size / 1GB).ToString("0.# GB")+""
     #
     $volumes = $Getdisk | Get-Partition | Get-Volume | Where-Object DriveLetter -ne $null
     ForEach ($volume in $volumes)
