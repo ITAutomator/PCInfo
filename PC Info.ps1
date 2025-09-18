@@ -264,9 +264,11 @@ Function RegGet ($keymain, $keypath, $keyname)
     $result
 }
 #endregion Functions
+$scriptFullname = $PSCommandPath ; if (!($scriptFullname)) {$scriptFullname =$MyInvocation.InvocationName}
 ################################ Main Code Area
 $scriptName     = "PC Info.ps1"
-$scriptVer      = "v2023-11-20"
+#$scriptVer      = "v2023-11-20"
+$scriptVer      = "v"+(Get-Item $scriptFullname).LastWriteTime.ToString("yyyy-MM-dd")
 ################################
 Write-Host "$($scriptName) $($scriptVer)" -ForegroundColor Yellow
 Write-Host "  Gathering registry info..."
@@ -276,7 +278,7 @@ If ($tvid -eq "") {$tvid = RegGet "HKLM" "SOFTWARE\TeamViewer" "ClientID"}
 $tvaccnt = RegGet "HKLM" "SOFTWARE\WOW6432Node\TeamViewer" "OwningManagerAccountName"
 If ($tvaccnt -eq "") {$tvaccnt = RegGet "HKLM" "SOFTWARE\TeamViewer" "OwningManagerAccountName"}
 $TeamviewerID = [string]$tvid
-If (($tvaccnt -ne $null) -and ($tvaccnt -ne "")) {$TeamviewerID +=" ($($tvaccnt))"}
+If (($null -ne $tvaccnt) -and ($tvaccnt -ne "")) {$TeamviewerID +=" ($($tvaccnt))"}
 Write-Host "  Gathering network info..."
 # Networks
 $networks=@()
@@ -411,6 +413,6 @@ $file = "$($folder_downloads)\PC Info $($date).txt"
 # write file
 $out_lines | Out-File $file
 #################################################
-Read-Host -Prompt "Report saved to Downloads folder. Press Enter to exit and open that file."
+Read-Host -Prompt "Report saved to Downloads folder.  Press Enter to exit and open that file."
 # open file
 Invoke-Item $file
